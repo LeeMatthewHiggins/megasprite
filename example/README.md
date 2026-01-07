@@ -1,4 +1,4 @@
-# atlas_creator
+# megasprite_example
 
 A new Flutter project.
 

@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.megasprite" "\0"
-            VALUE "FileDescription", "atlas_creator" "\0"
+            VALUE "CompanyName", "com.example" "\0"
+            VALUE "FileDescription", "megasprite_example" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "atlas_creator" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 com.megasprite. All rights reserved." "\0"
-            VALUE "OriginalFilename", "atlas_creator.exe" "\0"
-            VALUE "ProductName", "atlas_creator" "\0"
+            VALUE "InternalName", "megasprite_example" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
+            VALUE "OriginalFilename", "megasprite_example.exe" "\0"
+            VALUE "ProductName", "megasprite_example" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

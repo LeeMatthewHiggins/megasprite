@@ -1,0 +1,37 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Example (macOS)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}/example",
+      "args": ["-d", "macos"]
+    },
+    {
+      "name": "Example (Chrome)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}/example",
+      "args": ["-d", "chrome"]
+    },
+    {
+      "name": "Atlas Creator (macOS)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}/tool/atlas_creator",
+      "args": ["-d", "macos"]
+    },
+    {
+      "name": "Atlas Creator (Chrome)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}/tool/atlas_creator",
+      "args": ["-d", "chrome"]
+    }
+  ]
+}
