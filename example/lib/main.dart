@@ -1,6 +1,9 @@
 import 'dart:math';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:archive/archive.dart';
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:megasprite/megasprite.dart';
 
@@ -39,12 +42,16 @@ class SpriteDemo extends StatefulWidget {
 class _SpriteDemoState extends State<SpriteDemo>
     with SingleTickerProviderStateMixin {
   SpriteAtlas? _atlas;
+  List<SpriteLocation> _spriteLocations = [];
   late AnimationController _controller;
   final List<_AnimatedSprite> _sprites = [];
   final _random = Random();
+  bool _isDragging = false;
 
   static const int _spriteCount = 50;
-  static const double _spriteSize = 32;
+  static const double _defaultSpriteSize = 32;
+
+  static const _imageExtensions = ['.png', '.jpg', '.jpeg', '.webp'];
 
   @override
   void initState() {
@@ -61,8 +68,83 @@ class _SpriteDemoState extends State<SpriteDemo>
     if (mounted) {
       setState(() {
         _atlas = atlas;
+        _spriteLocations = [];
         _initializeSprites();
       });
+    }
+  }
+
+  Future<void> _handleDrop(DropDoneDetails details) async {
+    if (details.files.isEmpty) return;
+
+    final file = details.files.first;
+    final name = file.name.toLowerCase();
+
+    if (name.endsWith('.zip')) {
+      await _handleZipDrop(await file.readAsBytes());
+    } else if (_isImageFile(name)) {
+      await _handleImageDrop(await file.readAsBytes());
+    }
+  }
+
+  bool _isImageFile(String name) {
+    return _imageExtensions.any(name.endsWith);
+  }
+
+  Future<void> _handleImageDrop(Uint8List bytes) async {
+    try {
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      final image = frame.image;
+
+      final newAtlas = SpriteAtlas(image: image);
+
+      if (mounted) {
+        setState(() {
+          _atlas?.dispose();
+          _atlas = newAtlas;
+          _spriteLocations = [];
+          _initializeSprites();
+        });
+      }
+    } on Exception catch (_) {
+      // Failed to load image
+    }
+  }
+
+  Future<void> _handleZipDrop(Uint8List bytes) async {
+    try {
+      final loader = ZipAtlasLoader();
+      final result = await loader.load(bytes);
+
+      if (mounted) {
+        setState(() {
+          _atlas?.dispose();
+          _atlas = result.atlas;
+          _spriteLocations = result.spriteLocations;
+          _initializeSprites();
+        });
+      }
+    } on ZipAtlasException catch (_) {
+      await _handleZipFallback(bytes);
+    } on Exception catch (_) {
+      await _handleZipFallback(bytes);
+    }
+  }
+
+  Future<void> _handleZipFallback(Uint8List bytes) async {
+    try {
+      final archive = ZipDecoder().decodeBytes(bytes);
+
+      final imageFile = archive.files.firstWhere(
+        (file) => file.isFile && _isImageFile(file.name.toLowerCase()),
+        orElse: () => throw Exception('No image found in zip'),
+      );
+
+      final imageBytes = imageFile.content as Uint8List;
+      await _handleImageDrop(imageBytes);
+    } on Exception catch (_) {
+      // Failed to extract zip
     }
   }
 
@@ -71,15 +153,29 @@ class _SpriteDemoState extends State<SpriteDemo>
     _sprites.clear();
 
     for (var i = 0; i < _spriteCount; i++) {
+      final locationIndex = _spriteLocations.isNotEmpty
+          ? _random.nextInt(_spriteLocations.length)
+          : -1;
+      final spriteSize = _getSpriteSize(locationIndex);
+
       _sprites.add(
         _AnimatedSprite(
-          x: _random.nextDouble() * (size.width - _spriteSize),
-          y: _random.nextDouble() * (size.height - _spriteSize),
+          x: _random.nextDouble() * (size.width - spriteSize),
+          y: _random.nextDouble() * (size.height - spriteSize),
           dx: (_random.nextDouble() - 0.5) * 4,
           dy: (_random.nextDouble() - 0.5) * 4,
+          locationIndex: locationIndex,
         ),
       );
     }
+  }
+
+  double _getSpriteSize(int locationIndex) {
+    if (_spriteLocations.isEmpty || locationIndex < 0) {
+      return _defaultSpriteSize;
+    }
+    final location = _spriteLocations[locationIndex];
+    return location.originalWidth.toDouble();
   }
 
   @override
@@ -91,26 +187,88 @@ class _SpriteDemoState extends State<SpriteDemo>
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Megasprite Example'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: _atlas == null
-          ? const Center(child: CircularProgressIndicator())
-          : AnimatedBuilder(
-              animation: _controller,
-              builder: (context, child) {
-                _updateSprites(context);
-                return CustomPaint(
-                  painter: _DemoSpritePainter(
-                    sprites: _buildSprites(),
-                    atlas: _atlas!,
-                  ),
-                  size: Size.infinite,
-                );
-              },
+        backgroundColor: colorScheme.inversePrimary,
+        actions: [
+          if (_spriteLocations.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Center(
+                child: Text(
+                  '${_spriteLocations.length} sprites loaded',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
             ),
+        ],
+      ),
+      body: DropTarget(
+        onDragEntered: (_) => setState(() => _isDragging = true),
+        onDragExited: (_) => setState(() => _isDragging = false),
+        onDragDone: (details) {
+          setState(() => _isDragging = false);
+          _handleDrop(details);
+        },
+        child: Stack(
+          children: [
+            if (_atlas == null)
+              const Center(child: CircularProgressIndicator())
+            else
+              AnimatedBuilder(
+                animation: _controller,
+                builder: (context, child) {
+                  _updateSprites(context);
+                  return CustomPaint(
+                    painter: _DemoSpritePainter(
+                      sprites: _buildSprites(),
+                      atlas: _atlas!,
+                    ),
+                    size: Size.infinite,
+                  );
+                },
+              ),
+            if (_isDragging)
+              ColoredBox(
+                color: colorScheme.primary.withValues(alpha: 0.2),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: colorScheme.primary,
+                        width: 2,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.image,
+                          size: 48,
+                          color: colorScheme.primary,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Drop image or atlas ZIP',
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: colorScheme.primary,
+                                  ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _atlas != null ? _initializeSprites : null,
         child: const Icon(Icons.refresh),
@@ -120,10 +278,12 @@ class _SpriteDemoState extends State<SpriteDemo>
 
   void _updateSprites(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final maxY = size.height - _spriteSize - kToolbarHeight;
-    final maxX = size.width - _spriteSize;
 
     for (final sprite in _sprites) {
+      final spriteSize = _getSpriteSize(sprite.locationIndex);
+      final maxY = size.height - spriteSize - kToolbarHeight;
+      final maxX = size.width - spriteSize;
+
       sprite
         ..x += sprite.dx
         ..y += sprite.dy;
@@ -143,17 +303,35 @@ class _SpriteDemoState extends State<SpriteDemo>
 
   List<Sprite> _buildSprites() {
     final atlasImage = _atlas!.image;
-    final srcRect = ui.Rect.fromLTWH(
-      0,
-      0,
-      atlasImage.width.toDouble(),
-      atlasImage.height.toDouble(),
-    );
+
+    if (_spriteLocations.isEmpty) {
+      final srcRect = ui.Rect.fromLTWH(
+        0,
+        0,
+        atlasImage.width.toDouble(),
+        atlasImage.height.toDouble(),
+      );
+
+      return _sprites.map((s) {
+        return Sprite(
+          rect: ui.Rect.fromLTWH(
+            s.x,
+            s.y,
+            _defaultSpriteSize,
+            _defaultSpriteSize,
+          ),
+          sourceRect: srcRect,
+        );
+      }).toList();
+    }
 
     return _sprites.map((s) {
+      final location = _spriteLocations[s.locationIndex];
+      final displaySize = location.originalWidth.toDouble();
+
       return Sprite(
-        rect: ui.Rect.fromLTWH(s.x, s.y, _spriteSize, _spriteSize),
-        sourceRect: srcRect,
+        rect: ui.Rect.fromLTWH(s.x, s.y, displaySize, displaySize),
+        sourceRect: location.sprite.sourceRect,
       );
     }).toList();
   }
@@ -165,12 +343,14 @@ class _AnimatedSprite {
     required this.y,
     required this.dx,
     required this.dy,
+    required this.locationIndex,
   });
 
   double x;
   double y;
   double dx;
   double dy;
+  int locationIndex;
 }
 
 class _DemoSpritePainter extends CustomPainter {
