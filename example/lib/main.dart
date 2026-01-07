@@ -60,18 +60,6 @@ class _SpriteDemoState extends State<SpriteDemo>
       vsync: this,
       duration: const Duration(seconds: 1),
     )..repeat();
-    _loadAtlas();
-  }
-
-  Future<void> _loadAtlas() async {
-    final atlas = await SpriteAtlas.fromAsset('assets/sprites.png');
-    if (mounted) {
-      setState(() {
-        _atlas = atlas;
-        _spriteLocations = [];
-        _initializeSprites();
-      });
-    }
   }
 
   Future<void> _handleDrop(DropDoneDetails details) async {
@@ -178,6 +166,15 @@ class _SpriteDemoState extends State<SpriteDemo>
     return location.originalWidth.toDouble();
   }
 
+  void _resetToInitialState() {
+    setState(() {
+      _atlas?.dispose();
+      _atlas = null;
+      _spriteLocations = [];
+      _sprites.clear();
+    });
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -190,22 +187,6 @@ class _SpriteDemoState extends State<SpriteDemo>
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Megasprite Example'),
-        backgroundColor: colorScheme.inversePrimary,
-        actions: [
-          if (_spriteLocations.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Center(
-                child: Text(
-                  '${_spriteLocations.length} sprites loaded',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-            ),
-        ],
-      ),
       body: DropTarget(
         onDragEntered: (_) => setState(() => _isDragging = true),
         onDragExited: (_) => setState(() => _isDragging = false),
@@ -216,7 +197,7 @@ class _SpriteDemoState extends State<SpriteDemo>
         child: Stack(
           children: [
             if (_atlas == null)
-              const Center(child: CircularProgressIndicator())
+              _buildDropPrompt(colorScheme)
             else
               AnimatedBuilder(
                 animation: _controller,
@@ -255,10 +236,19 @@ class _SpriteDemoState extends State<SpriteDemo>
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Drop image or atlas ZIP',
+                          'Drop to load',
                           style:
                               Theme.of(context).textTheme.titleMedium?.copyWith(
                                     color: colorScheme.primary,
+                                  ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Image or Atlas ZIP',
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.primary
+                                        .withValues(alpha: 0.7),
                                   ),
                         ),
                       ],
@@ -269,9 +259,40 @@ class _SpriteDemoState extends State<SpriteDemo>
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _atlas != null ? _initializeSprites : null,
-        child: const Icon(Icons.refresh),
+      floatingActionButton: _atlas != null
+          ? FloatingActionButton(
+              onPressed: _resetToInitialState,
+              child: const Icon(Icons.close),
+            )
+          : null,
+    );
+  }
+
+  Widget _buildDropPrompt(ColorScheme colorScheme) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.image_outlined,
+            size: 64,
+            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Drop an image or atlas ZIP to start',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'PNG, JPG, JPEG, WebP',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.outline,
+                ),
+          ),
+        ],
       ),
     );
   }
