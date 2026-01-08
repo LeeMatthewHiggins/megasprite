@@ -31,6 +31,7 @@ class SpriteFileTree extends StatefulWidget {
 class _SpriteFileTreeState extends State<SpriteFileTree> {
   final _dropHandler = SpriteDropHandler();
   bool _isDragging = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -78,9 +79,16 @@ class _SpriteFileTreeState extends State<SpriteFileTree> {
   }
 
   Future<void> _handleRootDrop(DropDoneDetails details) async {
-    final entries = await _dropHandler.processDropDetails(details);
-    if (entries.isNotEmpty) {
-      widget.onSpritesAdded(entries);
+    setState(() => _isLoading = true);
+    try {
+      final entries = await _dropHandler.processDropDetails(details);
+      if (entries.isNotEmpty) {
+        widget.onSpritesAdded(entries);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -153,34 +161,60 @@ class _SpriteFileTreeState extends State<SpriteFileTree> {
             onDragExited: (_) => setState(() => _isDragging = false),
             onDragDone: _handleRootDrop,
             child: groups.isEmpty
-                ? _EmptyDropZone(isDragging: _isDragging)
-                : Container(
-                    decoration: BoxDecoration(
-                      border: _isDragging
-                          ? Border.all(color: colorScheme.primary, width: 2)
-                          : null,
-                    ),
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(8),
-                      itemCount: groups.length,
-                      itemBuilder: (context, index) {
-                        final entry = groups.entries.elementAt(index);
-                        final folder = entry.key;
-                        final sprites = entry.value;
+                ? _EmptyDropZone(isDragging: _isDragging, isLoading: _isLoading)
+                : Stack(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          border: _isDragging
+                              ? Border.all(color: colorScheme.primary, width: 2)
+                              : null,
+                        ),
+                        child: ListView.builder(
+                          padding: const EdgeInsets.all(8),
+                          itemCount: groups.length,
+                          itemBuilder: (context, index) {
+                            final entry = groups.entries.elementAt(index);
+                            final folder = entry.key;
+                            final sprites = entry.value;
 
-                        return _FolderSection(
-                          folder: folder,
-                          sprites: sprites,
-                          selectedSpriteId: selectedId,
-                          onSpriteRemoved: widget.onSpriteRemoved,
-                          onSpriteSelected: (id) =>
-                              widget.selectionController.toggle(id ?? ''),
-                          onSpritesDropped: widget.onSpritesAdded,
-                          onFolderDeleted: widget.onFolderDeleted,
-                          dropHandler: _dropHandler,
-                        );
-                      },
-                    ),
+                            return _FolderSection(
+                              folder: folder,
+                              sprites: sprites,
+                              selectedSpriteId: selectedId,
+                              onSpriteRemoved: widget.onSpriteRemoved,
+                              onSpriteSelected: (id) =>
+                                  widget.selectionController.toggle(id ?? ''),
+                              onSpritesDropped: widget.onSpritesAdded,
+                              onFolderDeleted: widget.onFolderDeleted,
+                              dropHandler: _dropHandler,
+                            );
+                          },
+                        ),
+                      ),
+                      if (_isLoading)
+                        ColoredBox(
+                          color: colorScheme.surface.withValues(alpha: 0.8),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const CircularProgressIndicator(),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Loading images...',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
           ),
         ),
@@ -454,9 +488,13 @@ class _SpriteItem extends StatelessWidget {
 }
 
 class _EmptyDropZone extends StatelessWidget {
-  const _EmptyDropZone({required this.isDragging});
+  const _EmptyDropZone({
+    required this.isDragging,
+    required this.isLoading,
+  });
 
   final bool isDragging;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -483,34 +521,55 @@ class _EmptyDropZone extends StatelessWidget {
             child: SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.add_photo_alternate_outlined,
-                      size: 48,
-                      color: isDragging
-                          ? colorScheme.primary
-                          : colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Drop images here',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                child: isLoading
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: CircularProgressIndicator(),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Loading images...',
+                            style:
+                                Theme.of(context).textTheme.titleMedium?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                    ),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.add_photo_alternate_outlined,
+                            size: 48,
                             color: isDragging
                                 ? colorScheme.primary
                                 : colorScheme.onSurfaceVariant,
                           ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'PNG, JPG, GIF, WebP, BMP, or ZIP',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colorScheme.outline,
+                          const SizedBox(height: 12),
+                          Text(
+                            'Drop images here',
+                            style:
+                                Theme.of(context).textTheme.titleMedium?.copyWith(
+                                      color: isDragging
+                                          ? colorScheme.primary
+                                          : colorScheme.onSurfaceVariant,
+                                    ),
                           ),
-                    ),
-                  ],
-                ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'PNG, JPG, GIF, WebP, BMP, or ZIP',
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: colorScheme.outline,
+                                    ),
+                          ),
+                        ],
+                      ),
               ),
             ),
           ),
