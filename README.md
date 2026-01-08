@@ -1,16 +1,15 @@
 # MegaSprite
 
-GPU-accelerated sprite rendering for Flutter using spatial binning and fragment shaders.
+High-performance sprite atlas building and rendering for Flutter.
 
 ## Features
 
-- **High-performance rendering**: Uses fragment shaders for GPU-accelerated sprite rendering
-- **Spatial binning**: Efficiently batches sprites using cell-based spatial partitioning
 - **Texture atlas building**: MaxRects packing algorithm with automatic sprite trimming
 - **Sprite deduplication**: Detects and eliminates duplicate sprites to optimize atlas size
 - **Rotation support**: Pack sprites rotated for better atlas utilization
 - **Isolate-based processing**: Non-blocking atlas building using Dart isolates
 - **ZIP serialization**: Export and load atlases as compressed archives
+- **Two rendering modes**: Production-ready Canvas.drawAtlas and experimental GPU shader rendering
 
 ## Installation
 
@@ -22,6 +21,40 @@ dependencies:
 ## Usage
 
 ### Rendering Sprites
+
+MegaSprite provides two rendering approaches:
+
+#### Atlas Painter (Production Ready)
+
+Uses Flutter's `Canvas.drawAtlas` for reliable, well-tested sprite rendering:
+
+```dart
+import 'package:megasprite/megasprite.dart';
+
+class MySpriteWidget extends StatefulWidget {
+  @override
+  State<MySpriteWidget> createState() => _MySpriteWidgetState();
+}
+
+class _MySpriteWidgetState extends State<MySpriteWidget> {
+  late SpriteAtlas atlas;
+  List<Sprite> sprites = [];
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: MegaSpriteAtlasPainter(
+        sprites: sprites,
+        atlas: atlas,
+      ),
+    );
+  }
+}
+```
+
+#### Shader Painter (Experimental)
+
+Uses fragment shaders with spatial binning for GPU-accelerated rendering. This approach can handle large numbers of sprites but is experimental:
 
 ```dart
 import 'package:megasprite/megasprite.dart';
@@ -101,11 +134,11 @@ final loadedAtlas = await loader.load(zipBytes);
 
 ## API Reference
 
-### Core Classes
+### Rendering
 
-- `MegaSpriteShaderPainter` - CustomPainter for rendering sprites with fragment shaders
-- `MegaSpriteAtlasPainter` - Alternative painter using Canvas.drawAtlas
-- `Sprite` - Represents a sprite with position, source rect, and trim info
+- `MegaSpriteAtlasPainter` - Production-ready painter using Canvas.drawAtlas
+- `MegaSpriteShaderPainter` - Experimental GPU shader painter with spatial binning
+- `Sprite` - Represents a sprite with position, source rect, and optional transforms
 - `SpriteAtlas` - Wrapper for a texture atlas image
 
 ### Atlas Building

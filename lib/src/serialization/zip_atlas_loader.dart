@@ -4,6 +4,7 @@ import 'package:archive/archive.dart';
 import 'package:megasprite/src/atlas/atlas_result.dart';
 import 'package:megasprite/src/serialization/atlas_deserializer.dart';
 import 'package:megasprite/src/sprite_atlas.dart';
+import 'package:megasprite/src/utils/megasprite_exception.dart';
 
 class ZipAtlasLoadResult {
   const ZipAtlasLoadResult({
@@ -110,13 +111,4 @@ class ZipAtlasLoader {
 
     return null;
   }
-}
-
-class ZipAtlasException implements Exception {
-  ZipAtlasException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => 'ZipAtlasException: $message';
 }

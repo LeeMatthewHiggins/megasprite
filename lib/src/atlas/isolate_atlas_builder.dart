@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:megasprite/src/atlas/atlas_build_progress.dart';
-import 'package:megasprite/src/atlas/atlas_builder.dart' show AtlasBuildException;
 import 'package:megasprite/src/atlas/atlas_builder_config.dart';
 import 'package:megasprite/src/atlas/atlas_page.dart';
 import 'package:megasprite/src/atlas/atlas_result.dart';
@@ -13,6 +12,9 @@ import 'package:megasprite/src/models/source_sprite.dart';
 import 'package:megasprite/src/models/sprite_frame.dart';
 import 'package:megasprite/src/models/trim_rect.dart';
 import 'package:megasprite/src/packing/free_rect.dart';
+import 'package:megasprite/src/utils/atlas_compositor.dart';
+import 'package:megasprite/src/utils/megasprite_exception.dart';
+import 'package:megasprite/src/utils/pixel_utils.dart';
 
 class _ProcessedSprite {
   const _ProcessedSprite({
@@ -381,40 +383,8 @@ class IsolateAtlasBuilder {
     List<PackedSprite> packed,
     int width,
     int height,
-  ) async {
-    final recorder = ui.PictureRecorder();
-    final canvas = ui.Canvas(recorder);
-
-    for (final sprite in packed) {
-      if (sprite.frame.isEmpty) continue;
-
-      final image = sprite.frame.trimmedImage;
-
-      if (sprite.rotated) {
-        canvas
-          ..save()
-          ..translate(
-            sprite.x.toDouble() + sprite.packedWidth,
-            sprite.y.toDouble(),
-          )
-          ..rotate(3.14159265359 / 2)
-          ..drawImage(image, ui.Offset.zero, ui.Paint())
-          ..restore();
-      } else {
-        canvas.drawImage(
-          image,
-          ui.Offset(sprite.x.toDouble(), sprite.y.toDouble()),
-          ui.Paint(),
-        );
-      }
-    }
-
-    final picture = recorder.endRecording();
-    final atlasImage = await picture.toImage(width, height);
-    picture.dispose();
-
-    return atlasImage;
-  }
+  ) =>
+      AtlasCompositor.composite(packed, width, height);
 
   Future<ui.Image> _decodeImage(Uint8List bytes) async {
     final codec = await ui.instantiateImageCodec(bytes);
@@ -501,74 +471,11 @@ _ScaleResult _scalePixels(
 }
 
 _TrimResult _trimImage(Uint8List pixels, int width, int height, int tolerance) {
-  const bytesPerPixel = 4;
-  const alphaOffset = 3;
-
-  var minX = width;
-  var maxX = -1;
-  var minY = height;
-  var maxY = -1;
-
-  for (var y = 0; y < height; y++) {
-    for (var x = 0; x < width; x++) {
-      final index = (y * width + x) * bytesPerPixel + alphaOffset;
-      if (pixels[index] > tolerance) {
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-      }
-    }
-  }
-
-  if (maxX < minX || maxY < minY) {
-    return _TrimResult(
-      trimmedPixels: Uint8List(0),
-      trimRect: TrimRect(
-        originalWidth: width,
-        originalHeight: height,
-        x: 0,
-        y: 0,
-        width: 0,
-        height: 0,
-      ),
-      pixelHash: 0,
-    );
-  }
-
-  final trimWidth = maxX - minX + 1;
-  final trimHeight = maxY - minY + 1;
-  final trimmedPixels = Uint8List(trimWidth * trimHeight * bytesPerPixel);
-
-  for (var y = 0; y < trimHeight; y++) {
-    final srcRowStart = ((minY + y) * width + minX) * bytesPerPixel;
-    final dstRowStart = y * trimWidth * bytesPerPixel;
-    final rowBytes = trimWidth * bytesPerPixel;
-
-    trimmedPixels.setRange(
-      dstRowStart,
-      dstRowStart + rowBytes,
-      pixels,
-      srcRowStart,
-    );
-  }
-
-  var hash = 0;
-  for (var i = 0; i < trimmedPixels.length; i++) {
-    hash = (hash * 31 + trimmedPixels[i]) & 0x7FFFFFFF;
-  }
-
+  final result = PixelUtils.trim(pixels, width, height, tolerance);
   return _TrimResult(
-    trimmedPixels: trimmedPixels,
-    trimRect: TrimRect(
-      originalWidth: width,
-      originalHeight: height,
-      x: minX,
-      y: minY,
-      width: trimWidth,
-      height: trimHeight,
-    ),
-    pixelHash: hash,
+    trimmedPixels: result.trimmedPixels,
+    trimRect: result.trimRect,
+    pixelHash: result.pixelHash,
   );
 }
 

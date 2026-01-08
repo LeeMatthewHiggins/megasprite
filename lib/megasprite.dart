@@ -22,3 +22,4 @@ export 'src/sprite.dart';
 export 'src/sprite_atlas.dart';
 export 'src/sprite_effect.dart';
 export 'src/sprite_metrics.dart';
+export 'src/utils/megasprite_exception.dart';

@@ -167,45 +167,45 @@ class _AtlasCreatorScreenState extends State<AtlasCreatorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Row(
+      body: Column(
         children: [
-          SizedBox(
-            width: 320,
-            child: Column(
+          Expanded(
+            child: Row(
               children: [
-                Expanded(
-                  child: SpriteFileTree(
-                    sprites: _sprites,
-                    selectionController: _selectionController,
-                    onSpriteRemoved: _onSpriteRemoved,
-                    onSpritesAdded: _onSpritesAdded,
-                    emptyFolders: _emptyFolders,
-                    onFolderCreated: _onFolderCreated,
-                    onFolderDeleted: _onFolderDeleted,
+                SizedBox(
+                  width: 320,
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: SpriteFileTree(
+                          sprites: _sprites,
+                          selectionController: _selectionController,
+                          onSpriteRemoved: _onSpriteRemoved,
+                          onSpritesAdded: _onSpritesAdded,
+                          emptyFolders: _emptyFolders,
+                          onFolderCreated: _onFolderCreated,
+                          onFolderDeleted: _onFolderDeleted,
+                        ),
+                      ),
+                      if (_sprites.isNotEmpty || _emptyFolders.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Row(
+                            children: [
+                              TextButton.icon(
+                                onPressed: _clearSprites,
+                                icon: const Icon(Icons.clear_all),
+                                label: const Text('Clear'),
+                              ),
+                              const Spacer(),
+                              Text('${_sprites.length} sprites'),
+                            ],
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-                if (_sprites.isNotEmpty || _emptyFolders.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Row(
-                      children: [
-                        TextButton.icon(
-                          onPressed: _clearSprites,
-                          icon: const Icon(Icons.clear_all),
-                          label: const Text('Clear'),
-                        ),
-                        const Spacer(),
-                        Text('${_sprites.length} sprites'),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const VerticalDivider(width: 1),
-          Expanded(
-            child: Column(
-              children: [
+                const VerticalDivider(width: 1),
                 Expanded(
                   child: _isBuilding
                       ? _BuildProgressView(progress: _buildProgress)
@@ -226,40 +226,40 @@ class _AtlasCreatorScreenState extends State<AtlasCreatorScreen> {
                               selectionController: _selectionController,
                             ),
                 ),
-                AtlasSettingsPanel(
-                  sizePreset: _sizePreset,
-                  padding: _padding,
-                  allowRotation: _allowRotation,
-                  trimTolerance: _trimTolerance,
-                  packingAlgorithm: _packingAlgorithm,
-                  scalePercent: _scalePercent,
-                  canBuild: _sprites.isNotEmpty && !_isBuilding,
-                  canExport: _result != null && !_isBuilding,
-                  onSizePresetChanged: (value) => setState(() => _sizePreset = value),
-                  onPaddingChanged: (value) => setState(() => _padding = value),
-                  onAllowRotationChanged: (value) => setState(() => _allowRotation = value),
-                  onTrimToleranceChanged: (value) => setState(() => _trimTolerance = value),
-                  onPackingAlgorithmChanged: (value) => setState(() => _packingAlgorithm = value),
-                  onScalePercentChanged: (value) => setState(() => _scalePercent = value),
-                  onBuild: _buildAtlas,
-                  onExport: _exportAtlas,
-                ),
+                if (_selectionController.selectedSpriteId != null) ...[
+                  const VerticalDivider(width: 1),
+                  SizedBox(
+                    width: 280,
+                    child: SpriteInfoPanel(
+                      sprites: _sprites,
+                      selectionController: _selectionController,
+                      result: _result,
+                      atlasSizePreset: _sizePreset,
+                      onClose: _selectionController.clear,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
-          if (_selectionController.selectedSpriteId != null) ...[
-            const VerticalDivider(width: 1),
-            SizedBox(
-              width: 280,
-              child: SpriteInfoPanel(
-                sprites: _sprites,
-                selectionController: _selectionController,
-                result: _result,
-                atlasSizePreset: _sizePreset,
-                onClose: _selectionController.clear,
-              ),
-            ),
-          ],
+          AtlasSettingsPanel(
+            sizePreset: _sizePreset,
+            padding: _padding,
+            allowRotation: _allowRotation,
+            trimTolerance: _trimTolerance,
+            packingAlgorithm: _packingAlgorithm,
+            scalePercent: _scalePercent,
+            canBuild: _sprites.isNotEmpty && !_isBuilding,
+            canExport: _result != null && !_isBuilding,
+            onSizePresetChanged: (value) => setState(() => _sizePreset = value),
+            onPaddingChanged: (value) => setState(() => _padding = value),
+            onAllowRotationChanged: (value) => setState(() => _allowRotation = value),
+            onTrimToleranceChanged: (value) => setState(() => _trimTolerance = value),
+            onPackingAlgorithmChanged: (value) => setState(() => _packingAlgorithm = value),
+            onScalePercentChanged: (value) => setState(() => _scalePercent = value),
+            onBuild: _buildAtlas,
+            onExport: _exportAtlas,
+          ),
         ],
       ),
     );

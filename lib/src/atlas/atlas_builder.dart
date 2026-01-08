@@ -10,6 +10,8 @@ import 'package:megasprite/src/models/source_sprite.dart';
 import 'package:megasprite/src/models/sprite_frame.dart';
 import 'package:megasprite/src/packing/max_rects_packer.dart';
 import 'package:megasprite/src/packing/packing_strategy.dart';
+import 'package:megasprite/src/utils/atlas_compositor.dart';
+import 'package:megasprite/src/utils/megasprite_exception.dart';
 
 class AtlasBuilder {
   AtlasBuilder({
@@ -187,40 +189,8 @@ class AtlasBuilder {
     List<PackedSprite> packed,
     int width,
     int height,
-  ) async {
-    final recorder = ui.PictureRecorder();
-    final canvas = ui.Canvas(recorder);
-
-    for (final sprite in packed) {
-      if (sprite.frame.isEmpty) continue;
-
-      final image = sprite.frame.trimmedImage;
-
-      if (sprite.rotated) {
-        canvas
-          ..save()
-          ..translate(
-            sprite.x.toDouble() + sprite.packedWidth,
-            sprite.y.toDouble(),
-          )
-          ..rotate(3.14159265359 / 2)
-          ..drawImage(image, ui.Offset.zero, ui.Paint())
-          ..restore();
-      } else {
-        canvas.drawImage(
-          image,
-          ui.Offset(sprite.x.toDouble(), sprite.y.toDouble()),
-          ui.Paint(),
-        );
-      }
-    }
-
-    final picture = recorder.endRecording();
-    final atlasImage = await picture.toImage(width, height);
-    picture.dispose();
-
-    return atlasImage;
-  }
+  ) =>
+      AtlasCompositor.composite(packed, width, height);
 
   Future<ui.Image> _decodeImage(Uint8List bytes, String identifier) async {
     try {
@@ -245,13 +215,4 @@ class _DeduplicationResult {
   final List<SpriteFrame> uniqueFrames;
   final Map<int, SpriteFrame> hashToFrame;
   final Map<String, SpriteFrame> duplicates;
-}
-
-class AtlasBuildException implements Exception {
-  AtlasBuildException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => 'AtlasBuildException: $message';
 }

@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:archive/archive.dart';
 import 'package:megasprite/src/atlas/atlas_result.dart';
 import 'package:megasprite/src/serialization/atlas_serializer.dart';
+import 'package:megasprite/src/utils/megasprite_exception.dart';
 
 class ZipAtlasExporter {
   ZipAtlasExporter({
@@ -54,13 +55,4 @@ class ZipAtlasExporter {
     }
     return byteData.buffer.asUint8List();
   }
-}
-
-class ZipAtlasExportException implements Exception {
-  ZipAtlasExportException(this.message);
-
-  final String message;
-
-  @override
-  String toString() => 'ZipAtlasExportException: $message';
 }

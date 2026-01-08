@@ -222,17 +222,21 @@ class AtlasSettingsPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainer,
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            ...settingsRow,
-            const SizedBox(width: 24),
-            buildButton,
-            const SizedBox(width: 8),
-            exportButton,
-          ],
-        ),
+      child: Row(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: settingsRow,
+              ),
+            ),
+          ),
+          const SizedBox(width: 24),
+          buildButton,
+          const SizedBox(width: 8),
+          exportButton,
+        ],
       ),
     );
   }
