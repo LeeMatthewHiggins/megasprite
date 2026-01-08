@@ -93,35 +93,10 @@ class _SpriteFileTreeState extends State<SpriteFileTree> {
   }
 
   Future<void> _showCreateFolderDialog() async {
-    final controller = TextEditingController();
-
     final folderName = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('New Folder'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Folder name',
-            border: OutlineInputBorder(),
-          ),
-          onSubmitted: (value) => Navigator.of(context).pop(value.trim()),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
-            child: const Text('Create'),
-          ),
-        ],
-      ),
+      builder: (dialogContext) => _CreateFolderDialog(),
     );
-
-    controller.dispose();
 
     if (folderName != null && folderName.isNotEmpty) {
       widget.onFolderCreated(folderName);
@@ -217,6 +192,47 @@ class _SpriteFileTreeState extends State<SpriteFileTree> {
                     ],
                   ),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CreateFolderDialog extends StatefulWidget {
+  @override
+  State<_CreateFolderDialog> createState() => _CreateFolderDialogState();
+}
+
+class _CreateFolderDialogState extends State<_CreateFolderDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('New Folder'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        decoration: const InputDecoration(
+          labelText: 'Folder name',
+          border: OutlineInputBorder(),
+        ),
+        onSubmitted: (value) => Navigator.of(context).pop(value.trim()),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
+          child: const Text('Create'),
         ),
       ],
     );

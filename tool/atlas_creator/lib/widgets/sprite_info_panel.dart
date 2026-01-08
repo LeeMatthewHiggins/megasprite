@@ -1,9 +1,9 @@
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:atlas_creator/controllers/atlas_selection_controller.dart';
 import 'package:atlas_creator/screens/atlas_creator_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:megasprite/megasprite.dart';
 
 class SpriteInfoPanel extends StatefulWidget {
@@ -189,10 +189,22 @@ class _SpriteInfoPanelState extends State<SpriteInfoPanel> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  selectedId,
-                  style: textTheme.titleMedium,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        selectedId,
+                        style: textTheme.titleMedium,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.copy, size: 18),
+                      onPressed: () => _copyIdentifier(selectedId),
+                      tooltip: 'Copy identifier',
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 if (_previewImage != null)
@@ -295,6 +307,16 @@ class _SpriteInfoPanelState extends State<SpriteInfoPanel> {
     return bytes.toString().replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
       (match) => '${match[1]},',
+    );
+  }
+
+  void _copyIdentifier(String identifier) {
+    Clipboard.setData(ClipboardData(text: identifier));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Identifier copied to clipboard'),
+        duration: Duration(seconds: 2),
+      ),
     );
   }
 }
